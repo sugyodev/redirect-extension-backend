@@ -1,67 +1,81 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var app = express();
+const express = require('express');
+const mysql = require('mysql');
+const bodyParser = require('body-parser');
+const app = express();
 const cors = require('cors');
 
-//Allow all requests from all domains & localhost
 app.all('/*', function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Accept");
-    res.header("Access-Control-Allow-Methods", "POST, GET");
-    next();
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "POST, GET");
+  next();
 });
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-function checkUrlIsSearchEngine(url) {
-    if (url.match(/^https?:.*?google.*?\/search?/g) != null) {
-        return getQuery(url);
-    }
-    if (url.match(/^https?:.*?duckduckgo.*?\/?q=/g) != null) {
-        return getQuery(url);
-    }
-    if (url.match(/^https?:.*?ecosia.*?\/?search?/g) != null) {
-        return getQuery(url);
-    }
-    if (url.match(/^https?:.*?yahoo.*?\/?search?/g) != null) {
-        return getQuery(url, 'yahoo')
-    }
-    if (url.match(/^https?:.*?bing.*?\/?search?/g) != null) {
-        return getQuery(url,  'bing')
-    }
-}
-
-function getQuery(search, type = '') {
-    var pattern = type == 'yahoo' ? /[\?\&]p=(.*)&?/ : /[\?\&]q=(.*)&?/
-    var result = pattern.exec(search) != null ? pattern.exec(search)[1] : ''
-    var str = result
-    if (type != 'yahoo') {
-        str = result.split('&')[0] || ''
-    }
-    if(type == 'bing') {
-        if(search.match(/=/g) && search.match(/=/g).length > 1){
-            return `location.replace(https://searchesmia.com/bingchr10?q=${str})`
-        } else {
-            return '';
-        }
-    } else {
-        return `location.replace(https://searchesmia.com/bingchr5?q=${str})`
-    }
-}
-
-
-app.get('/testing', function (req, res) {
-    var query = req?.query.url || ''
-    if(req && req.query && req.query.url) {
-        query = req.query.url 
-        var url = checkUrlIsSearchEngine(query)
-        if (url) {
-            res.send({ 'link': url });
-        }
-    }
-    
+const DbConnection = mysql.createPool({
+  connectionLimit: 10,
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'formx_tool'
 });
 
+
+/**
+ * Create a new project
+ */
+app.post('/projects', (req, res) => {
+  const category = 1;
+  const name = 'San Jose';
+  const address = 'ADU';
+  const background = 'Some Background';
+  const sqrt = 400;
+  const description = 'Project Description';
+
+  const sql = 'INSERT INTO projects (category, name, address, background, sqrt, description) VALUES (?, ?, ?, ?, ?, ?)';
+  const values = [category, name, address, background, sqrt, description];
+  DbConnection.query(sql, values, (error, results, fields) => {
+    if (error) {
+      console.error(error);
+    } else {
+      console.log('Data inserted successfully');
+    }
+  });
+})
+
+/**
+ * Get all projects
+ */
+app.get('/projects', (req, res) => {
+  DbConnection.query('SELECT * FROM projects', (error, results, fields) => {
+    if (error) {
+      res.send({ message: 'error' });
+    } else {
+      res.send({ message: 'success', data: results });
+    }
+  });
+})
+
+/**
+ * User Login
+ */
+app.get('/login', (req, res) => {
+  const { email, password } = req.query
+  if (email && password) {
+    DbConnection.query(`SELECT * FROM users WHERE email = '${email}' AND password = '${Buffer.from(password).toString('base64')}'`, (error, results, fields) => {
+      if (error) {
+        res.send({ message: 'error' });
+      } else if (results.length > 0) {
+        res.send({ message: 'success', user: results[0] });
+      } else {
+        res.send({ message: 'no registered user' });
+      }
+    });
+  }
+})
+
+// DbConnection.end();
 app.listen(8080);
